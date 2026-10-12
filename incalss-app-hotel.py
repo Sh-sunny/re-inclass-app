@@ -21,7 +21,7 @@ def load_data(file_bytes: bytes | None, file_path: str) -> pd.DataFrame:
 
     df.columns = df.columns.str.strip().str.lower()
 
-    # Support either British or American spelling.
+    # Standardize the spelling of the borough column.
     if "neighborhood_group" in df.columns and "neighbourhood_group" not in df.columns:
         df = df.rename(columns={"neighborhood_group": "neighbourhood_group"})
 
@@ -39,7 +39,6 @@ def load_data(file_bytes: bytes | None, file_path: str) -> pd.DataFrame:
             + ", ".join(sorted(missing_columns))
         )
 
-    # Remove currency symbols and commas before converting prices to numbers.
     df["price"] = (
         df["price"]
         .astype(str)
@@ -123,23 +122,29 @@ valid_availability = filtered_df[
     filtered_df["availability_365"].between(0, 365)
 ]
 
-listing_count = (
-    filtered_df["id"].nunique()
-    if "id" in filtered_df.columns
-    else len(filtered_df)
-)
+if "id" in filtered_df.columns:
+    listing_count = filtered_df["id"].nunique()
+else:
+    listing_count = len(filtered_df)
+
 median_price = valid_prices["price"].median()
 median_availability = valid_availability["availability_365"].median()
 
-metric1, metric2, metric3 = st.columns(3)
 
-metric1.metric("Listings in selection", f"{listing_count:,}")
-metric2.metric(
-    "Median nightly asking price",
+st.subheader("Key Market Benchmark")
+st.metric(
+    "Median nightly asking price in the selected market",
     f"${median_price:,.0f}" if pd.notna(median_price) else "N/A",
 )
-metric3.metric(
-    "Median days available in next 365 days",
+
+metric1, metric2 = st.columns(2)
+
+metric1.metric(
+    "Listings in selection",
+    f"{listing_count:,}",
+)
+metric2.metric(
+    "Median days available in the next 365 days",
     f"{median_availability:.0f}"
     if pd.notna(median_availability)
     else "N/A",
@@ -189,5 +194,5 @@ st.caption(
 
 st.caption(
     "This is listing data, not booking or transaction data. Asking price is "
-    "not the final price paid, and days available are not occupancy."
+    "not necessarily the final price paid, and days available are not occupancy."
 )
